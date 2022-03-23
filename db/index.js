@@ -55,6 +55,7 @@ async function getAllPosts() {
   }
 }
 
+//this function is used only in index so we don't export this one
 async function getPostsByUser(user_id) {
   try {
     const { rows: post_id } = await client.query(`
@@ -116,6 +117,25 @@ async function getPostsById(post_id) {
   }
 }
 
+async function getPostsByTagName(tagName) {
+  try {
+    const { rows: post_ids } = await client.query(
+      `
+    SELECT posts.id
+    FROM posts
+    JOIN post_tags ON posts.id=post_tags.post_id
+    JOIN tags ON tags.id=post_tags.tag_id
+    WHERE tags.name=$1;
+    `,
+      [tagName]
+    );
+
+    return await Promise.all(post_ids.map((post) => getPostsById(post.id)));
+  } catch (err) {
+    throw err;
+  }
+}
+
 //CREATE
 async function createUser({ username, password, name, location }) {
   try {
@@ -137,7 +157,7 @@ async function createUser({ username, password, name, location }) {
   }
 }
 
-async function createPost({ author_id, title, content }) {
+async function createPost({ author_id, title, content, tags = [] }) {
   try {
     const {
       rows: [post],
@@ -149,7 +169,10 @@ async function createPost({ author_id, title, content }) {
     `,
       [author_id, title, content]
     );
-    return post;
+
+    const tagList = await createTags(tags);
+
+    return await addTagsToPosts(post.id, tagList);
   } catch (err) {
     throw err;
   }
@@ -250,30 +273,48 @@ async function updateUser(id, fields = {}) {
   }
 }
 
-async function updatePost(id, fields = {}) {
+async function updatePost(post_id, fields = {}) {
+  const { tags } = fields;
+  delete fields.tags;
+
   const setString = Object.keys(fields)
     .map((key, index) => `"${key}"=$${index + 1}`)
     .join(", ");
 
-  // return early if this is called without fields
-  if (setString.length === 0) {
-    return;
-  }
-
   try {
-    const {
-      rows: [post],
-    } = await client.query(
-      `
+    if (setString.length > 0) {
+      await client.query(
+        `
       UPDATE posts
       SET ${setString}
-      WHERE id=${id}
+      WHERE id=${post_id}
       RETURNING *;
     `,
-      Object.values(fields)
+        Object.values(fields)
+      );
+    }
+
+    if (tags === undefined) {
+      return await getPostsById(post_id);
+    }
+
+    const tagList = await createTags(tags);
+
+    const tagListIdString = tagList.map((tag) => `${tag.id}`).join(", ");
+
+    await client.query(
+      `
+    DELETE FROM post_tags
+    WHERE tag_id
+    NOT IN (${tagListIdString})
+    AND post_id=$1;
+    `,
+      [post_id]
     );
 
-    return post;
+    await addTagsToPosts(post_id, tagList);
+
+    return await getPostsById(post_id);
   } catch (error) {
     throw error;
   }
@@ -285,10 +326,10 @@ module.exports = {
   createPost,
   addTagsToPosts,
   createTags,
-  // getPostsByUser, used only in index file
   getUserById,
   getAllUsers,
   getAllPosts,
+  getPostsByTagName,
   updateUser,
   updatePost,
 };
