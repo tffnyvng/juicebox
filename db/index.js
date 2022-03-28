@@ -84,6 +84,13 @@ async function getPostsById(post_id) {
       [post_id]
     );
 
+    if (!post) {
+      throw {
+        name: "PostNotFoundError",
+        message: "Post not found",
+      };
+    }
+
     const { rows: tags } = await client.query(
       `
   SELECT tags.* 
@@ -138,13 +145,13 @@ async function getPostsByTagName(tagName) {
 
 async function getAllTags() {
   try {
-    const { rows } = await client.query(
+    const { rows: tags } = await client.query(
       `SELECT *
         FROM tags;
         `
     );
 
-    return rows;
+    return tags;
   } catch (err) {
     throw err;
   }
@@ -362,6 +369,7 @@ module.exports = {
   getUserById,
   getAllUsers,
   getAllPosts,
+  getPostsById,
   getAllTags,
   getPostsByTagName,
   getUserByUsername,
