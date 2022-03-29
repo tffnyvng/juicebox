@@ -6,9 +6,6 @@ const server = express();
 const morgan = require("morgan");
 const { client } = require("./db");
 const apiRouter = require("./api");
-const client = new Client(
-  process.env.DATABASE_URL || "postgres://localhost:5432/juicebox-dev"
-);
 
 server.use(morgan("dev"));
 server.use(express.json());
