@@ -27,8 +27,7 @@ tagsRouter.get("/:tagName/posts", async (req, res, next) => {
         return true;
       }
 
-      //this one causes the issues
-      if (req.user.id && post.author.id === req.user.id) {
+      if (req.user && post.author.id === req.user.id) {
         return true;
       }
 
