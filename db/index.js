@@ -300,7 +300,6 @@ async function updateUser(id, fields = {}) {
       rows: [user],
     } = await client.query(
       `
-
         UPDATE users
         SET ${setString}
         WHERE id=${id}

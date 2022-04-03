@@ -23,5 +23,5 @@ server.use((req, res, next) => {
 client.connect();
 
 server.listen(PORT, () => {
-  console.log("The serve is up on port", PORT);
+  console.log("The server is up on port", PORT);
 });
